@@ -21,6 +21,11 @@ urlpatterns = [
     path("settings/integrations", views.integrations, name="integrations"),
     path("settings/import", views.import_data, name="import_data"),
     path("settings/export", views.export_data, name="export_data"),
+    path(
+        "settings/sync-metadata",
+        views.sync_metadata_settings,
+        name="sync_metadata_settings",
+    ),
     path("settings/advanced", views.advanced, name="advanced"),
     path("settings/about", views.about, name="about"),
     path(
@@ -30,6 +35,11 @@ urlpatterns = [
     ),
     path("regenerate_token", views.regenerate_token, name="regenerate_token"),
     path("clear_search_cache", views.clear_search_cache, name="clear_search_cache"),
+    path(
+        "sync_tracked_metadata",
+        views.sync_tracked_metadata,
+        name="sync_tracked_metadata",
+    ),
     path(
         "update_plex_usernames",
         views.update_plex_usernames,

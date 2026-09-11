@@ -1,0 +1,43 @@
+<div id="metadata-sync-form">
+  <form method="post"
+        action="{% url 'sync_tracked_metadata' %}"
+        class="flex flex-wrap items-center gap-3"
+        x-data="{ selected: 'all', selectedCount: {{ metadata_sync_choices.0.count }}, syncInProgress: {{ metadata_sync_in_progress|yesno:'true,false' }} }">
+    {% csrf_token %}
+    <select name="media_type"
+            class="p-2 bg-[#39404b] rounded-md text-white text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            @change="selected = $event.target.value; selectedCount = Number($event.target.selectedOptions[0].dataset.count)"
+            :disabled="syncInProgress"
+            {% if metadata_sync_in_progress %}disabled{% endif %}>
+      {% for choice in metadata_sync_choices %}
+        <option value="{{ choice.value }}" data-count="{{ choice.count }}">{{ choice.label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit"
+            class="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed"
+            :disabled="selectedCount === 0 || syncInProgress"
+            {% if metadata_sync_choices.0.count == 0 or metadata_sync_in_progress %}disabled{% endif %}>
+      {% include "app/icons/circle-spinning-clockwise.svg" with classes="w-4 h-4 mr-2" %}
+      Sync Metadata
+    </button>
+    <label class="flex items-center text-sm text-gray-300 w-full">
+      <input type="checkbox"
+             name="force"
+             value="1"
+             class="mr-2 rounded bg-[#2a2f35] border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+             :disabled="syncInProgress"
+             {% if metadata_sync_in_progress %}disabled{% endif %}>
+      Force all (ignore 1-hour skip)
+    </label>
+    <p class="text-amber-400 text-sm w-full"
+       x-show="syncInProgress"
+       {% if not metadata_sync_in_progress %}x-cloak{% endif %}>
+      A metadata sync is already in progress.
+    </p>
+    <p class="text-red-400 text-sm w-full"
+       x-show="!syncInProgress && selectedCount === 0"
+       {% if metadata_sync_choices.0.count > 0 or metadata_sync_in_progress %}x-cloak{% endif %}>
+      <span x-text="selected === 'all' ? 'You have no tracked items to sync.' : 'You have no tracked items in the selected category.'">You have no tracked items to sync.</span>
+    </p>
+  </form>
+</div>

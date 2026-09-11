@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.test import TestCase
 from django.urls import reverse
 
@@ -211,3 +212,66 @@ class MediaDetailsViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.image, existing_image)
+
+
+class SyncMetadataViewTests(TestCase):
+    """Test the per-item sync metadata view."""
+
+    def setUp(self):
+        """Create a user and log in."""
+        self.credentials = {"username": "test", "password": "12345"}
+        self.user = get_user_model().objects.create_user(**self.credentials)
+        self.client.login(**self.credentials)
+
+    @patch("app.models.Item.fetch_releases")
+    @patch("app.metadata.services.get_media_metadata")
+    def test_sync_metadata_updates_item(self, mock_get_metadata, mock_fetch_releases):
+        """POST refreshes title and image from the provider."""
+        mock_get_metadata.return_value = {
+            "title": "The Godfather",
+            "image": "http://example.com/new.jpg",
+        }
+        item = Item.objects.create(
+            media_id="238",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Old Title",
+            image="http://example.com/old.jpg",
+        )
+
+        response = self.client.post(
+            reverse(
+                "sync_metadata",
+                kwargs={
+                    "source": Sources.TMDB.value,
+                    "media_type": MediaTypes.MOVIE.value,
+                    "media_id": "238",
+                },
+            )
+            + "?next=/",
+        )
+
+        self.assertEqual(response.status_code, 302)
+        item.refresh_from_db()
+        self.assertEqual(item.title, "The Godfather")
+        self.assertEqual(item.image, "http://example.com/new.jpg")
+        mock_fetch_releases.assert_called_once_with(delay=False)
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("synced" in str(message) for message in messages))
+
+    def test_sync_metadata_rejects_manual_source(self):
+        """Manual items cannot be synced through the view."""
+        response = self.client.post(
+            reverse(
+                "sync_metadata",
+                kwargs={
+                    "source": Sources.MANUAL.value,
+                    "media_type": MediaTypes.MOVIE.value,
+                    "media_id": "manual-1",
+                },
+            ),
+            {"next": "/"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Manual items cannot be synced", response.content.decode())

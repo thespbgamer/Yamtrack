@@ -7,6 +7,7 @@ from django.contrib.admin.sites import AlreadyRegistered
 from app.models import (
     Episode,
     Item,
+    MetadataSyncRun,
     UserMessage,
 )
 
@@ -45,6 +46,15 @@ class UserMessageAdmin(admin.ModelAdmin):
     list_filter = ["level", "shown_at"]
 
 
+@admin.register(MetadataSyncRun)
+class MetadataSyncRunAdmin(admin.ModelAdmin):
+    """Custom admin for bulk metadata sync history."""
+
+    search_fields = ["user__username", "task_id"]
+    list_display = ["user", "created_at", "synced", "skipped", "failed", "force"]
+    list_filter = ["force"]
+
+
 class MediaAdmin(admin.ModelAdmin):
     """Custom admin for regular media model with search and filter options."""
 
@@ -58,7 +68,7 @@ class MediaAdmin(admin.ModelAdmin):
 
 # Auto-register remaining models
 app_models = apps.get_app_config("app").get_models()
-SpecialModels = ["Item", "Episode", "BasicMedia", "UserMessage"]
+SpecialModels = ["Item", "Episode", "BasicMedia", "UserMessage", "MetadataSyncRun"]
 for model in app_models:
     if (
         not model.__name__.startswith("Historical")

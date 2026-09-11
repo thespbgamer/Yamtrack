@@ -1,0 +1,38 @@
+{% extends "users/base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  Sync Metadata - Yamtrack
+{% endblock title %}
+
+{% block settings_content %}
+  <div class="space-y-6">
+    <div class="bg-[#2a2f35] rounded-lg p-6">
+      <div class="flex items-center mb-4">
+        {% include "app/icons/circle-spinning-clockwise.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}
+        <h2 class="text-xl font-semibold">Sync Metadata</h2>
+      </div>
+      <p class="text-gray-400 mb-5 text-sm">
+        Refresh titles and images from providers for media you are tracking.
+        Choose all tracked items or a single category. Manual entries are skipped.
+        <br>
+        Items successfully synced in the last hour are skipped automatically,
+        unless you check Force all.
+        <br>
+        This can take a while if you have a large library. Results appear in Sync History.
+      </p>
+      <div class="bg-[#39404b] p-5 rounded-lg">
+        {% include "users/components/metadata_sync_form.html" %}
+      </div>
+    </div>
+
+    <div class="bg-[#2a2f35] rounded-lg p-6">
+      <div class="flex items-center mb-4">
+        {% include "app/icons/clock-reversing.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}
+        <h2 class="text-xl font-semibold">Sync History</h2>
+      </div>
+      <p class="text-gray-400 mb-5 text-sm">Showing sync activity from the last 7 days.</p>
+      {% include "users/components/metadata_sync_history.html" %}
+    </div>
+  </div>
+{% endblock settings_content %}

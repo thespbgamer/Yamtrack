@@ -821,6 +821,36 @@ class UserMessage(models.Model):
         return self.level
 
 
+class MetadataSyncRun(models.Model):
+    """Completed bulk metadata sync, including per-item failures."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    task_id = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    media_type = models.CharField(max_length=10, blank=True, default="")
+    force = models.BooleanField(default=False)
+    synced = models.PositiveIntegerField(default=0)
+    skipped = models.PositiveIntegerField(default=0)
+    failed = models.PositiveIntegerField(default=0)
+    errors = models.JSONField(default=list)
+
+    class Meta:
+        """Meta options for the model."""
+
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["user", "-created_at"],
+                name="app_mdsync_user_created",
+            ),
+            models.Index(fields=["task_id"], name="app_mdsync_task_id"),
+        ]
+
+    def __str__(self):
+        """Return a short summary of the run."""
+        return f"Metadata sync for {self.user}: {self.failed} failed"
+
+
 class Media(models.Model):
     """Abstract model for all media types."""
 

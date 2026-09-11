@@ -6,7 +6,6 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required
-from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Prefetch, prefetch_related_objects
@@ -16,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from app import config, helpers, history_processor
+from app import config, helpers, history_processor, metadata
 from app import home as home_helpers
 from app import statistics as stats
 from app.forms import EpisodeForm, ManualItemForm, get_form_class
@@ -442,99 +441,24 @@ def update_media_score(request, media_type, instance_id):
 @require_POST
 def sync_metadata(request, source, media_type, media_id, season_number=None):
     """Refresh the metadata for a media item."""
-    if source == Sources.MANUAL.value:
-        msg = "Manual items cannot be synced."
-        messages.error(request, msg)
+    try:
+        _item, title = metadata.sync_item_metadata(
+            source,
+            media_type,
+            media_id,
+            season_number,
+        )
+    except metadata.ManualSourceError as exc:
+        messages.error(request, str(exc))
         return HttpResponse(
-            msg,
+            str(exc),
             status=400,
             headers={"HX-Redirect": request.POST.get("next", "/")},
         )
-
-    cache_key = f"{source}_{media_type}_{media_id}"
-    if media_type == MediaTypes.SEASON.value:
-        cache_key += f"_{season_number}"
-
-    ttl = cache.ttl(cache_key)
-    logger.debug("%s - Cache TTL for: %s", cache_key, ttl)
-
-    if ttl is not None and ttl > (settings.CACHE_TIMEOUT - 3):
-        msg = "The data was recently synced, please wait a few seconds."
-        messages.error(request, msg)
-        logger.error(msg)
+    except metadata.RecentlySyncedError as exc:
+        messages.error(request, str(exc))
+        logger.warning("%s", exc)
     else:
-        deleted = cache.delete(cache_key)
-        logger.debug("%s - Old cache deleted: %s", cache_key, deleted)
-
-        metadata = services.get_media_metadata(
-            media_type,
-            media_id,
-            source,
-            [season_number],
-        )
-        item, _ = Item.objects.update_or_create(
-            media_id=media_id,
-            source=source,
-            media_type=media_type,
-            season_number=season_number,
-            defaults={
-                "title": metadata["title"],
-                "image": metadata["image"],
-            },
-        )
-        title = metadata["title"]
-        if season_number:
-            title += f" - Season {season_number}"
-
-        if media_type == MediaTypes.SEASON.value:
-            metadata["episodes"] = tmdb.process_episodes(
-                metadata,
-                [],
-            )
-
-            # Create a dictionary of existing episodes keyed by episode number
-            existing_episodes = {
-                ep.episode_number: ep
-                for ep in Item.objects.filter(
-                    source=source,
-                    media_type=MediaTypes.EPISODE.value,
-                    media_id=media_id,
-                    season_number=season_number,
-                )
-            }
-
-            episodes_to_update = []
-            episode_count = 0
-
-            for episode_data in metadata["episodes"]:
-                episode_number = episode_data["episode_number"]
-                if episode_number in existing_episodes:
-                    episode_item = existing_episodes[episode_number]
-                    episode_item.title = metadata["title"]
-                    episode_item.image = episode_data["image"]
-                    episodes_to_update.append(episode_item)
-                    episode_count += 1
-
-            logger.info(
-                "Found %s existing episodes to update for %s",
-                episode_count,
-                title,
-            )
-
-            if episodes_to_update:
-                updated_count = Item.objects.bulk_update(
-                    episodes_to_update,
-                    ["title", "image"],
-                    batch_size=100,
-                )
-                logger.info(
-                    "Successfully updated %s episodes for %s",
-                    updated_count,
-                    title,
-                )
-
-        item.fetch_releases(delay=False)
-
         msg = f"{title} was synced to {Sources(source).label} successfully."
         messages.success(request, msg)
 

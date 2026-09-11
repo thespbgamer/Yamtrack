@@ -1,0 +1,77 @@
+{% load app_tags %}
+
+<div class="space-y-3">
+  {% for result in metadata_sync_history %}
+    <div class="bg-[#39404b] rounded-lg p-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <div class="flex items-center gap-3">
+          {% if result.status == "SUCCESS" %}
+            {% if result.failed_items or result.error_lines %}
+              <span class="px-2 py-1 rounded text-xs font-medium text-emerald-400 bg-emerald-400/10">Finished</span>
+            {% else %}
+              <span class="px-2 py-1 rounded text-xs font-medium text-green-400 bg-green-400/10">Success</span>
+            {% endif %}
+          {% elif result.status == "STARTED" or result.status == "RETRY" %}
+            <span class="px-2 py-1 rounded text-xs font-medium text-blue-400 bg-blue-400/10">Started</span>
+          {% elif result.status == "FAILURE" %}
+            <span class="px-2 py-1 rounded text-xs font-medium text-red-400 bg-red-400/10">Failed</span>
+          {% else %}
+            <span class="px-2 py-1 rounded text-xs font-medium text-yellow-400 bg-yellow-400/10">Pending</span>
+          {% endif %}
+          <span class="text-sm text-gray-200">{{ result.scope }}</span>
+        </div>
+        <span class="text-xs text-gray-400">{{ result.date|datetime_format:user }}</span>
+      </div>
+
+      {% if result.summary %}<div class="text-sm text-gray-200">{{ result.summary }}</div>{% endif %}
+
+      {% if result.status == "FAILURE" and result.error_lines %}
+        <div class="mt-2" x-data="{ showDetails: false }">
+          <button @click="showDetails = !showDetails"
+                  class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                  x-text="showDetails ? 'Hide traceback' : 'Show traceback'">Show traceback</button>
+          <div class="mt-2 space-y-1 text-sm bg-[#2a2f35] p-3 rounded overflow-x-auto wrap-break-word"
+               x-show="showDetails"
+               x-cloak>
+            <div class="text-xs space-y-1 text-red-400">
+              {% for error in result.error_lines %}<div>{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+      {% elif result.failed_items or result.error_lines %}
+        <div class="mt-2" x-data="{ showDetails: false }">
+          <button @click="showDetails = !showDetails"
+                  class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                  x-text="showDetails ? 'Hide failed items' : 'Show failed items'">Show failed items</button>
+          <div class="mt-2 space-y-3 bg-[#2a2f35] p-3 rounded overflow-x-auto wrap-break-word"
+               x-show="showDetails"
+               x-cloak>
+            {% if result.failed_items %}
+              <ul class="space-y-3">
+                {% for item in result.failed_items %}
+                  <li class="wrap-break-word">
+                    <div class="text-sm text-gray-100">
+                      {{ item.title }}{% if item.media_label %}<span class="text-gray-400"> ({{ item.media_label }})</span>{% endif %}
+                    </div>
+                    {% if item.reason %}<div class="text-sm text-red-400 mt-0.5">{{ item.reason }}</div>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <ul class="space-y-1">
+                {% for error in result.error_lines %}
+                  <li class="text-sm text-red-400 wrap-break-word">{{ error }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  {% empty %}
+    <div class="bg-[#39404b] rounded-lg p-6 text-center">
+      <p class="text-gray-400 text-sm">No metadata syncs in the last 7 days</p>
+      <p class="text-gray-500 text-xs mt-1">Run a sync to see the history here</p>
+    </div>
+  {% endfor %}
+</div>

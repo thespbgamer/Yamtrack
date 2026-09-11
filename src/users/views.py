@@ -12,6 +12,8 @@ from django.template.defaultfilters import pluralize
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django_celery_beat.models import PeriodicTask
 
+from app import metadata
+from app import tasks as app_tasks
 from app.models import Item, MediaTypes
 from app.providers import tmdb
 from users.forms import NotificationSettingsForm, PasswordChangeForm, UserUpdateForm
@@ -306,6 +308,25 @@ def export_data(request):
     return render(request, "users/export_data.html")
 
 
+def _metadata_sync_form_context(user):
+    """Return template context for the bulk metadata sync form."""
+    return {
+        "metadata_sync_choices": metadata.get_metadata_sync_choice_data(user),
+        "metadata_sync_in_progress": metadata.is_metadata_sync_in_progress(user),
+        "metadata_sync_history": metadata.get_metadata_sync_history(user),
+    }
+
+
+@require_GET
+def sync_metadata_settings(request):
+    """Render the bulk metadata sync settings page."""
+    return render(
+        request,
+        "users/sync_metadata.html",
+        _metadata_sync_form_context(request.user),
+    )
+
+
 @require_GET
 def advanced(request):
     """Render the advanced settings page."""
@@ -388,6 +409,37 @@ def update_jellyfin_webhook_events(request):
     messages.success(request, "Jellyfin webhook settings updated successfully")
 
     return redirect("integrations")
+
+
+@require_POST
+def sync_tracked_metadata(request):
+    """Queue a bulk metadata sync for the current user's tracked items."""
+    if request.user.is_demo:
+        messages.error(request, "This section is view-only for demo accounts.")
+        return redirect("sync_metadata_settings")
+
+    scope = request.POST.get("media_type", metadata.ALL_TRACKING_SCOPE)
+    if scope not in metadata.get_valid_metadata_sync_scopes():
+        messages.error(request, "Invalid media type selected.")
+        return redirect("sync_metadata_settings")
+
+    media_type = None if scope == metadata.ALL_TRACKING_SCOPE else scope
+    if metadata.is_metadata_sync_in_progress(request.user):
+        messages.error(request, metadata.SYNC_IN_PROGRESS_MESSAGE)
+        return redirect("sync_metadata_settings")
+
+    if not metadata.get_tracked_items(request.user, media_type).exists():
+        messages.error(request, metadata.empty_sync_scope_message(media_type))
+        return redirect("sync_metadata_settings")
+
+    task_kwargs = {
+        "user_id": request.user.id,
+        "media_type": media_type,
+    }
+    if request.POST.get("force") in {"1", "on", "true"}:
+        task_kwargs["force"] = True
+    app_tasks.sync_tracked_metadata.delay(**task_kwargs)
+    return redirect("sync_metadata_settings")
 
 
 @require_POST

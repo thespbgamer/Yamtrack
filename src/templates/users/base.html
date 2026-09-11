@@ -53,6 +53,13 @@
               <span>Export Data</span>
             </a>
 
+            {% url 'sync_metadata_settings' as sync_metadata_url %}
+            <a href="{{ sync_metadata_url }}"
+               class="w-full flex items-center space-x-3 px-2 py-2 rounded-md transition-colors text-left border-l-2 cursor-pointer text-sm {% if request.path == sync_metadata_url %}bg-[#39404b] text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:bg-[#313842] hover:text-white{% endif %}">
+              {% include "app/icons/circle-spinning-clockwise.svg" with classes="w-5 h-5" %}
+              <span>Sync Metadata</span>
+            </a>
+
             {% url 'advanced' as advanced_url %}
             <a href="{{ advanced_url }}"
                class="w-full flex items-center space-x-3 px-2 py-2 rounded-md transition-colors text-left border-l-2 cursor-pointer text-sm {% if request.path == advanced_url %}bg-[#39404b] text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:bg-[#313842] hover:text-white{% endif %}">

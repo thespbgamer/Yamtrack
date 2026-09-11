@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -159,6 +160,24 @@ class ServicesTests(TestCase):
         self.assertEqual(exception.provider, Sources.OPENLIBRARY.value)
         self.assertIsNone(exception.status_code)
         self.assertIn("Open Library API (network error)", str(exception))
+        self.assertNotIn("logs", str(exception))
+
+    def test_provider_api_error_not_found(self):
+        """404 errors tell the user the item is missing, without a logs hint."""
+        mock_response = MagicMock()
+        mock_response.status_code = HTTPStatus.NOT_FOUND
+        mock_response.text = "Not Found"
+        error = requests.exceptions.HTTPError("404 Client Error")
+        error.response = mock_response
+
+        exception = services.ProviderAPIError(Sources.TMDB.value, error)
+
+        self.assertEqual(exception.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(
+            str(exception),
+            "This item was not found on The Movie Database.",
+        )
+        self.assertNotIn("logs", str(exception))
 
     @patch("app.providers.mal.anime")
     def test_get_media_metadata_anime(self, mock_anime):

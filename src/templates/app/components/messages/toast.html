@@ -21,7 +21,7 @@
     {% include "app/icons/info.svg" with classes="w-4 h-4 text-indigo-300 shrink-0" %}
   {% endif %}
 
-  <p class="text-sm font-medium flex-1">{{ message }}</p>
+  <p class="text-sm font-medium flex-1">{{ message|linebreaksbr }}</p>
   <button class="text-current opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
           @click="$el.parentElement.remove()">
     {% include "app/icons/x.svg" with classes="w-4 h-4" %}

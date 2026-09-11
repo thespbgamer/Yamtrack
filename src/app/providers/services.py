@@ -1,5 +1,6 @@
 import logging
 import time
+from http import HTTPStatus
 
 import requests
 from defusedxml import ElementTree
@@ -96,14 +97,17 @@ class ProviderAPIError(Exception):
         error_text = getattr(response, "text", str(error))
         logger.error("%s error: %s", provider_label, error_text)
 
-        message = f"There was an error contacting the {provider_label} API"
-        if self.status_code is None:
-            message += " (network error)"
+        if self.status_code == HTTPStatus.NOT_FOUND:
+            message = details or f"This item was not found on {provider_label}."
         else:
-            message += f" (HTTP {self.status_code})"
-        if details:
-            message += f": {details}"
-        message += ". Check the logs for more details."
+            message = f"There was an error contacting the {provider_label} API"
+            if self.status_code is None:
+                message += " (network error)"
+            else:
+                message += f" (HTTP {self.status_code})"
+            if details:
+                message += f": {details}"
+            message += "."
         super().__init__(message)
 
 
