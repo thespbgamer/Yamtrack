@@ -31,9 +31,7 @@
     </label>
     <p class="text-amber-400 text-sm w-full"
        x-show="syncInProgress"
-       {% if not metadata_sync_in_progress %}x-cloak{% endif %}>
-      A metadata sync is already in progress.
-    </p>
+       {% if not metadata_sync_in_progress %}x-cloak{% endif %}>A metadata sync is already in progress.</p>
     <p class="text-red-400 text-sm w-full"
        x-show="!syncInProgress && selectedCount === 0"
        {% if metadata_sync_choices.0.count > 0 or metadata_sync_in_progress %}x-cloak{% endif %}>

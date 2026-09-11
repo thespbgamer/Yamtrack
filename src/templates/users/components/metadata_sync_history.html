@@ -51,7 +51,7 @@
                 {% for item in result.failed_items %}
                   <li class="wrap-break-word">
                     <div class="text-sm text-gray-100">
-                      {{ item.title }}{% if item.media_label %}<span class="text-gray-400"> ({{ item.media_label }})</span>{% endif %}
+                      {{ item.title }}{% if item.media_label %}<span class="text-gray-400">({{ item.media_label }})</span>{% endif %}
                     </div>
                     {% if item.reason %}<div class="text-sm text-red-400 mt-0.5">{{ item.reason }}</div>{% endif %}
                   </li>
