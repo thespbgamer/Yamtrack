@@ -77,3 +77,44 @@ class ExportSettingsTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.auto_export_interval_value, 5)
         self.assertEqual(self.user.auto_export_interval_unit, "seconds")
+
+    def test_export_settings_demo_user_cannot_update(self):
+        """Demo accounts cannot change automatic export settings."""
+        self.user.is_demo = True
+        self.user.save()
+
+        response = self.client.post(
+            reverse("export_data"),
+            {
+                "auto_export_enabled": "on",
+                "auto_export_interval_value": "48",
+                "auto_export_interval_unit": "hours",
+            },
+        )
+
+        self.assertRedirects(response, reverse("export_data"))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.auto_export_enabled)
+        self.assertEqual(self.user.auto_export_interval_value, 7)
+        self.assertEqual(self.user.auto_export_interval_unit, "days")
+        message = next(iter(get_messages(response.wsgi_request)))
+        self.assertIn("view-only for demo accounts", str(message))
+
+    def test_export_settings_reject_non_numeric_interval(self):
+        """A non-numeric interval is treated as invalid."""
+        response = self.client.post(
+            reverse("export_data"),
+            {
+                "auto_export_enabled": "on",
+                "auto_export_interval_value": "not-a-number",
+                "auto_export_interval_unit": "hours",
+            },
+        )
+
+        self.assertRedirects(response, reverse("export_data"))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.auto_export_enabled)
+        self.assertEqual(self.user.auto_export_interval_value, 7)
+        self.assertEqual(self.user.auto_export_interval_unit, "days")
+        message = next(iter(get_messages(response.wsgi_request)))
+        self.assertIn("positive number with a valid unit", str(message))
